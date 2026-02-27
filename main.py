@@ -1,5 +1,7 @@
 import os
 import argparse
+from prompts import *
+from call_function import *
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -20,7 +22,11 @@ messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)]
 def main():
     #Generates the response
     response = client.models.generate_content(
-        model='gemini-2.5-flash', contents=messages
+        model='gemini-2.5-flash', 
+        contents=messages,
+        config=types.GenerateContentConfig(
+            tools=[available_functions],
+            system_instruction=system_prompt),
     )
     #Checks token usage
     token_count = response.usage_metadata.prompt_token_count
@@ -35,7 +41,12 @@ def main():
         print(f"User prompt: {args.user_prompt}")
         print(f"Prompt tokens: {token_count}")
         print(f"Response tokens: {response_tokens}")
-    print(response.text)
+    
+    if response.function_calls != None:
+        for i in response.function_calls:
+            print(f"Calling function: {i.name}({i.args})")
+    else:
+        print(response.text)
 
 
 if __name__ == "__main__":
