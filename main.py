@@ -42,12 +42,30 @@ def main():
         print(f"Prompt tokens: {token_count}")
         print(f"Response tokens: {response_tokens}")
     
-    if response.function_calls != None:
+    if response.function_calls is not None:
         for i in response.function_calls:
-            print(f"Calling function: {i.name}({i.args})")
+            #print(f"Calling function: {i.name}({i.args})")
+            function_call_result = call_function(i, verbose=args.verbose)
+
+            if len(function_call_result.parts) == 0:
+                raise Exception("Parts list is empty")
+
+            if function_call_result.parts[0].function_response == None:
+                raise Exception("Function Response is None")
+    
+            if function_call_result.parts[0].function_response.response == None:
+                raise Exception("Function Response is None")
+
+            if args.verbose == True:
+                print(f"-> {function_call_result.parts[0].function_response.response}")
+            else:
+                print(f"Calling function: {i.name}({i.args})")
+
+
     else:
         print(response.text)
 
+    
 
 if __name__ == "__main__":
     main()
