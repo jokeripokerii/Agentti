@@ -20,50 +20,64 @@ args = parser.parse_args()
 messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
 
 def main():
-    #Generates the response
-    response = client.models.generate_content(
-        model='gemini-2.5-flash', 
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions],
-            system_instruction=system_prompt),
-    )
-    #Checks token usage
-    token_count = response.usage_metadata.prompt_token_count
-    response_tokens = response.usage_metadata.prompt_token_count
+    for looppering in range(6):
+        #Generates the response
+        response = client.models.generate_content(
+            model='gemini-2.5-flash', 
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions],
+                system_instruction=system_prompt),
+        )
 
-    #Checks that the metadata is not none
-    if not response.usage_metadata:
-        raise RuntimeError("Metadata None")
+        if response.candidates is not None:
+            for resp in response.candidates:
+                messages.append(resp.content)
+        
 
-    #Prints the results and checks if --verbose flag is True
-    if args.verbose == True:
-        print(f"User prompt: {args.user_prompt}")
-        print(f"Prompt tokens: {token_count}")
-        print(f"Response tokens: {response_tokens}")
-    
-    if response.function_calls is not None:
-        for i in response.function_calls:
-            #print(f"Calling function: {i.name}({i.args})")
-            function_call_result = call_function(i, verbose=args.verbose)
+        #Checks token usage
+        token_count = response.usage_metadata.prompt_token_count
+        response_tokens = response.usage_metadata.prompt_token_count
 
-            if len(function_call_result.parts) == 0:
-                raise Exception("Parts list is empty")
+        #Checks that the metadata is not none
+        if not response.usage_metadata:
+            raise RuntimeError("Metadata None")
 
-            if function_call_result.parts[0].function_response == None:
-                raise Exception("Function Response is None")
-    
-            if function_call_result.parts[0].function_response.response == None:
-                raise Exception("Function Response is None")
+        #Prints the results and checks if --verbose flag is True
+        if args.verbose == True:
+            print(f"User prompt: {args.user_prompt}")
+            print(f"Prompt tokens: {token_count}")
+            print(f"Response tokens: {response_tokens}")
+        
+        function_responses = []
+        loop_count = 0
+        if response.function_calls is not None:
+            for i in response.function_calls:
+                #print(f"Calling function: {i.name}({i.args})")
+                function_call_result = call_function(i, verbose=args.verbose)
 
-            if args.verbose == True:
-                print(f"-> {function_call_result.parts[0].function_response.response}")
-            else:
-                print(f"Calling function: {i.name}({i.args})")
+                if len(function_call_result.parts) == 0:
+                    raise Exception("Parts list is empty")
 
+                if function_call_result.parts[0].function_response == None:
+                    raise Exception("Function Response is None")
+        
+                if function_call_result.parts[0].function_response.response == None:
+                    raise Exception("Function Response is None")
 
-    else:
-        print(response.text)
+                if args.verbose == True:
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+                else:
+                    print(f"Calling function: {i.name}({i.args})")
+                function_responses.append(function_call_result.parts[0])
+                messages.append(types.Content(role="user", parts=function_responses))
+                loop_count += 1
+                if loop_count > 5:
+                    sys.exit(1)
+
+        else:
+            print(response.text)
+            break
 
     
 
